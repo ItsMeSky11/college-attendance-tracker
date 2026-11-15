@@ -1,0 +1,459 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Attendance Tracker</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f1f5f9;
+    padding: 20px;
+    color: #1e293b;
+}
+
+.container {
+    max-width: 850px;
+    margin: auto;
+}
+
+header {
+    background: #2563eb;
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+header h1 { margin-bottom: 8px; }
+
+.panel {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+button {
+    padding: 11px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    background: #2563eb;
+    color: white;
+}
+
+button:hover { opacity: .85; }
+
+.add-btn {
+    width: 100%;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: white;
+    padding: 18px 8px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.card h2 {
+    font-size: 25px;
+    margin-top: 8px;
+}
+
+.blue { color: #2563eb; }
+.green { color: #16a34a; }
+.red { color: #dc2626; }
+.orange { color: #ea580c; }
+
+.subject-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.subject-btn {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.subject-btn.active {
+    background: #2563eb;
+    color: white;
+}
+
+.student {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 10px;
+}
+
+.student label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.student input {
+    width: 20px;
+    height: 20px;
+    accent-color: #dc2626;
+    margin: 0;
+}
+
+.status {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.present { color: #16a34a; }
+.absent { color: #dc2626; }
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 10px;
+}
+
+.badge {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.delete-btn {
+    background: #dc2626;
+    margin-top: 10px;
+}
+
+.empty {
+    text-align: center;
+    color: #64748b;
+    padding: 20px;
+}
+
+@media(max-width: 550px) {
+    body { padding: 10px; }
+
+    .summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card h2 { font-size: 22px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <h1>🎓 College Attendance Tracker</h1>
+    <p>Track your attendance for every college subject.</p>
+</header>
+
+<!-- ADD SUBJECT -->
+<div class="panel">
+    <h3>📚 My Subjects</h3>
+
+    <input
+        type="text"
+        id="subjectInput"
+        placeholder="Enter subject name (e.g. Mathematics)"
+    >
+
+    <button class="add-btn" onclick="addSubject()">
+        + Add Subject
+    </button>
+
+    <div class="subject-list" id="subjectList"></div>
+</div>
+
+<!-- ATTENDANCE -->
+<div class="panel">
+    <h3 id="selectedSubject">Select a Subject</h3>
+
+    <label>Select Class Date:</label>
+    <input type="date" id="dateInput">
+
+    <p style="color:gray;font-size:13px;">
+        Check the box if you were ABSENT.
+        Unchecked means PRESENT.
+    </p>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary">
+    <div class="card">
+        <p>Total Classes</p>
+        <h2 class="blue" id="total">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Present</p>
+        <h2 class="green" id="present">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Absent</p>
+        <h2 class="red" id="absent">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Attendance</p>
+        <h2 class="orange" id="percentage">0%</h2>
+    </div>
+</div>
+
+<!-- HISTORY -->
+<div class="panel">
+    <h3>📅 Attendance History</h3>
+    <div id="history">
+        <p class="empty">Select a subject to view attendance.</p>
+    </div>
+</div>
+
+</div>
+
+<script>
+
+// STORAGE
+let subjects = JSON.parse(
+    localStorage.getItem("collegeSubjects")
+) || [];
+
+let records = JSON.parse(
+    localStorage.getItem("collegeRecords")
+) || {};
+
+let selected = null;
+
+// TODAY
+const dateInput = document.getElementById("dateInput");
+
+const now = new Date();
+dateInput.value = new Date(
+    now.getTime() - now.getTimezoneOffset() * 60000
+).toISOString().split("T")[0];
+
+function saveData() {
+    localStorage.setItem(
+        "collegeSubjects",
+        JSON.stringify(subjects)
+    );
+
+    localStorage.setItem(
+        "collegeRecords",
+        JSON.stringify(records)
+    );
+}
+
+// ADD SUBJECT
+function addSubject() {
+    const input = document.getElementById("subjectInput");
+    const name = input.value.trim();
+
+    if (!name) {
+        alert("Please enter a subject name!");
+        return;
+    }
+
+    if (subjects.some(s =>
+        s.toLowerCase() === name.toLowerCase()
+    )) {
+        alert("Subject already exists!");
+        return;
+    }
+
+    subjects.push(name);
+
+    records[name] = {};
+
+    input.value = "";
+
+    saveData();
+    renderSubjects();
+
+    selectSubject(name);
+}
+
+// DISPLAY SUBJECTS
+function renderSubjects() {
+    const list = document.getElementById("subjectList");
+    list.innerHTML = "";
+
+    subjects.forEach(subject => {
+        const btn = document.createElement("button");
+
+        btn.textContent = subject;
+        btn.className = "subject-btn";
+
+        if (selected === subject) {
+            btn.classList.add("active");
+        }
+
+        btn.onclick = () => selectSubject(subject);
+
+        list.appendChild(btn);
+    });
+}
+
+// SELECT SUBJECT
+function selectSubject(subject) {
+    selected = subject;
+
+    document.getElementById("selectedSubject")
+        .textContent = "📖 " + subject;
+
+    renderSubjects();
+    updateAttendance();
+}
+
+// MARK ATTENDANCE
+function updateAttendance() {
+    if (!selected) return;
+
+    const date = dateInput.value;
+
+    if (!date) return;
+
+    const subjectRecords = records[selected];
+
+    if (!subjectRecords[date]) {
+        subjectRecords[date] = "Present";
+    }
+
+    const status = subjectRecords[date];
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = status === "Absent";
+
+    const label = document.createElement("label");
+    label.append(checkbox, document.createTextNode(
+        " Mark as Absent"
+    ));
+
+    checkbox.onchange = function() {
+        subjectRecords[date] = this.checked
+            ? "Absent"
+            : "Present";
+
+        saveData();
+        updateAttendance();
+    };
+
+    const history = document.getElementById("history");
+    history.innerHTML = "";
+
+    const current = document.createElement("div");
+    current.className = "student";
+
+    const dateLabel = document.createElement("strong");
+    dateLabel.textContent = date;
+
+    const statusLabel = document.createElement("span");
+    statusLabel.className = "status " +
+        (status === "Absent" ? "absent" : "present");
+
+    statusLabel.textContent = status.toUpperCase();
+
+    current.append(dateLabel, statusLabel);
+
+    const control = document.createElement("div");
+    control.appendChild(label);
+
+    history.append(current, control);
+
+    // SUMMARY
+    const dates = Object.keys(subjectRecords);
+
+    const total = dates.length;
+
+    const absent = dates.filter(
+        d => subjectRecords[d] === "Absent"
+    ).length;
+
+    const present = total - absent;
+
+    const percentage = total === 0
+        ? 0
+        : Math.round((present / total) * 100);
+
+    document.getElementById("total").textContent = total;
+    document.getElementById("present").textContent = present;
+    document.getElementById("absent").textContent = absent;
+
+    document.getElementById("percentage").textContent =
+        percentage + "%";
+
+    // FULL HISTORY
+    const historyTitle = document.createElement("h4");
+    historyTitle.textContent = "All Recorded Classes";
+    historyTitle.style.marginTop = "20px";
+
+    history.appendChild(historyTitle);
+
+    dates.sort((a, b) => b.localeCompare(a)).forEach(d => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        const dateText = document.createElement("span");
+        dateText.textContent = d;
+
+        const badge = document.createElement("span");
+        const isAbsent = subjectRecords[d] === "Absent";
+
+        badge.className = "badge " +
+            (isAbsent ? "absent" : "present");
+
+        badge.textContent = subjectRecords[d].toUpperCase();
+
+        item.append(dateText, badge);
+        history.appendChild(item);
+    });
+
+    saveData();
+}
+
+// CHANGE DATE
+dateInput.addEventListener("change", updateAttendance);
+
+// INITIALIZE
+renderSubjects();
+
+</script>
+
+</body>
+</html>
